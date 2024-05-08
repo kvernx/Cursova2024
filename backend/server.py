@@ -69,8 +69,8 @@ def houses():
     cursor.execute('SELECT * FROM "House";')
     houses = cursor.fetchall()
     print(request.args.get("arrival"))
-    arrival = int(request.args.get("arrival").replace("[","").replace("]",""))
-    print(arrival)
+    #arrival = int(request.args.get("arrival").replace("[","").replace("]",""))
+    #print(arrival)
     response = []
     for house in houses:
         element = {}
@@ -81,7 +81,7 @@ def houses():
         )
         cursor.execute(f"SELECT * FROM gethousebeds('{house[1]}')")
         element["housePlaces"] = cursor.fetchone()[0]
-        cursor.execute(f"SELECT * FROM gethouseresidents({arrival},'{house[1]}')")
+       # cursor.execute(f"SELECT * FROM gethouseresidents({arrival},'{house[1]}')")
         response.append(element)
     db_close(connection, cursor)
     return response
@@ -525,7 +525,7 @@ def login():
 def child(id):
     connection, cursor = db_connect()
     cursor.execute(
-        """
+        f"""
             SELECT "Client".id as id, C.name as name, C.surname as surname,"birthDate" as birthdate, sex,
                    "phoneNumber", C.adress, "Client".alergy, preferences, H.name as house_name, R.number as room_number,
                    B.number as bed_number
@@ -534,11 +534,12 @@ def child(id):
             JOIN public."Bed" B on B.id = "Client"."bedId"
             JOIN public."Room" R on R.id = B."roomId"
             JOIN public."House" H on H.id = R."houseId"
-            WHERE "Client".id = %s
-        """,
-        (id),
+            WHERE "Client".id = {id}
+        """
     )
     client_info = cursor.fetchone()
+    print("fetched")
+    print(client_info)
     return jsonify(client_info)
 
 
@@ -546,14 +547,13 @@ def child(id):
 def supervisor(id):
     connection, cursor = db_connect()
     cursor.execute(
-        """
+        f"""
             SELECT "Supervisor".id as id, C.name as name, C.surname as surname,"birthDate" as birthdate, sex,
             "phoneNumber", C.adress, "Supervisor".education
             FROM "Supervisor"
             JOIN public."Contact" C on C.id = "Supervisor"."contactId"
-            WHERE "Supervisor".id = %s
-        """,
-        (id),
+            WHERE "Supervisor".id = {id}
+        """
     )
     supervisor_info = cursor.fetchone()
     db_close(connection, cursor)
@@ -564,12 +564,12 @@ def supervisor(id):
 def allchildren(id):
     connection, cursor = db_connect()
     data = request.get_json()
-    print(data)
-    gender_filter = data["gender_filter"] if "gender_filter" in data.keys() and data["gender_filter"]!='' else None
-    age_filter = data["age_filter"] if "age_filter" in data.keys() and data["age_filter"]!='' else None
-    address_filter = data["address_filter"] if "address_filter" in data.keys() and data["address_filter"]!='' else None
-    house_filter = data["house_filter"] if "house_filter" in data.keys() and data["house_filter"]!='' else None
-    room_filter = data["room_filter"] if "room_filter" in data.keys() and data["room_filter"]!='' else None
+    print(data["age_filter"])
+    gender_filter = data["gender_filter"] if "gender_filter" in data.keys() and data["gender_filter"]!='' and data["gender_filter"]!='-' else None
+    age_filter = data["age_filter"] if "age_filter" in data.keys() and data["age_filter"]!='' and data["age_filter"]!="-" else None
+    address_filter = data["address_filter"] if "address_filter" in data.keys() and data["address_filter"]!='' and data["address_filter"]!='-' else None
+    house_filter = data["house_filter"] if "house_filter" in data.keys() and data["house_filter"]!='' and data["house_filter"]!='-' else None
+    room_filter = data["room_filter"] if "room_filter" in data.keys() and data["room_filter"]!='' and data["room_filter"]!='-' else None
     surname_filter = data["surname_filter"] if "surname_filter" in data.keys() and data["surname_filter"]!='' else None
     print(data)
     query = """ 
@@ -595,9 +595,6 @@ def allchildren(id):
         query += " AND (EXTRACT(YEAR FROM AGE(C.\"birthDate\")) >= %s) AND (EXTRACT(YEAR FROM AGE(C.\"birthDate\")) <= %s)"
         filter_values.append(age_filter)
         filter_values.append(str(int(age_filter)+3))
-    if address_filter is not None:
-        query += " AND (EXTRACT(YEAR FROM AGE(C.\"birthDate\")) <= %s)"
-        filter_values.append(age_filter)
     if address_filter is not None:
         query += " AND (C.adress ILIKE %s)"
         filter_values.append('%' + address_filter + '%')
@@ -728,7 +725,10 @@ def edit_supervisor():
     id = data["id"]
     name = data["name"]
     surname = data["surname"]
-    birthDate = data["birthdate"]
+    date_time_obj = datetime.fromisoformat(data["birthDate"])
+    birthDate = date_time_obj.date()
+    print("DATE")
+    print(birthDate)
     phoneNumber = data["phoneNumber"]
     address = data["address"]
     education = data["education"]
@@ -738,11 +738,11 @@ def edit_supervisor():
                     WHERE "Supervisor".id={id}""")
     contactId = cursor.fetchone()[0]
     cursor.execute(f"""UPDATE "Contact"
-                        SET name ={name} , surname = {surname},"birthDate" = {birthDate},"phoneNumber" = {phoneNumber},adress ={address}
+                        SET name ='{name}' , surname = '{surname}',"birthDate" = '{birthDate}',"phoneNumber" = '{phoneNumber}',adress ='{address}'
                         WHERE id = {contactId}""")
     connection.commit()
     cursor.execute(f"""UPDATE "Supervisor"
-                    SET education = {education}
+                    SET education = '{education}'
                     WHERE id = {id}""")
     connection.commit()
     db_close(connection=connection,cursor=cursor)
@@ -753,10 +753,13 @@ def edit_supervisor():
 def edit_child():
     connection, cursor = db_connect()
     data = request.get_json()
+    print("new data", data)
     id = data["id"]
     name = data["name"]
     surname = data["surname"]
-    birthDate = data["birthdate"]
+    date_time_obj = datetime.fromisoformat(data["birthDate"])
+    birthDate = date_time_obj.date()
+    print("DATE")
     phoneNumber = data["phoneNumber"]
     address = data["address"]
     alergy = data["alergy"]
@@ -771,17 +774,17 @@ def edit_child():
                     WHERE "Client".id={id}""")
     contactId = cursor.fetchone()[0]
     cursor.execute(f"""UPDATE "Contact"
-                        SET name ={name} , surname = {surname},"birthDate" = {birthDate},"phoneNumber" = {phoneNumber},adress ={address}
+                        SET name ='{name}' , surname = '{surname}',"birthDate" = '{birthDate}',"phoneNumber" = '{phoneNumber}',adress ='{address}'
                         WHERE id = {contactId}""")
     connection.commit()
     cursor.execute(f"""SELECT "Bed".id
                     FROM "Bed"
                     JOIN public."Room" R on R.id = "Bed"."roomId"
                     JOIN public."House" H on H.id = R."houseId"
-                    WHERE H.name={houseName} AND R.number={roomNumber} AND "Bed".number={bedNumber}""")
+                    WHERE H.name='{houseName}' AND R.number={roomNumber} AND "Bed".number={bedNumber}""")
     bedId = cursor.fetchone()[0]
     cursor.execute(f"""UPDATE "Client"
-                    SET alergy = {alergy}, preferences = {preferences}, "bedId" = {bedId}
+                    SET alergy = '{alergy}', preferences = {preferences}, "bedId" = {bedId}
                     WHERE id = {id}""")
     connection.commit()
     db_close(connection=connection,cursor=cursor)
@@ -833,24 +836,46 @@ def add_supervisor():
     return jsonify("Successfully added"), 200
 
 
-@app.route('/get_profit', methods=['GET'])
-def download_csv():
+@app.route('/analytics', methods=['GET'])
+def get_profit():
     connection,cursor = db_connect()
-    cursor.execute("""SELECT C.name,C.surname,C.sex,C."birthDate",C.adress,C."phoneNumber",Cl.alergy
-                        FROM "Client" as Cl
-                        JOIN public."Contact" C on C.id = Cl."contactId"
+    cursor.execute("""SELECT COUNT(id)
+                        FROM "Client"
                         """)
-
-    # Create CSV data
-    csv_data = ','.join([col[0] for col in cursor.description]) + '\n'
-    csv_data += '\n'.join([','.join(map(str, row)) for row in cursor.fetchall()])
-
+    kids_number = cursor.fetchone()[0]
+    print(kids_number)
+    cursor.execute("""SELECT COUNT(id)
+                        FROM "Arrival"
+                        """)
+    arrival_number = cursor.fetchone()[0]
+    cursor.execute("""SELECT COUNT(id)
+                        FROM "Supervisor"
+                        """)
+    supervisor_number = cursor.fetchone()[0]
     db_close(connection,cursor)
 
-    # Return CSV data as response
-    return Response(csv_data, mimetype='text/csv', headers={'Content-Disposition': 'attachment;filename=data.csv'})
+    return [kids_number,arrival_number,supervisor_number]
 
-
+@app.route('/get_profit', methods=['GET'])
+def get_profit_chart():
+    # К-сть дітей
+    # к-сть заїздів
+    # ксть-вихователів
+    connection,cursor = db_connect()
+    cursor.execute("""SELECT "Arrival"."beginningDate" as beginningDate, "Arrival".price*count(C.id) as profit
+                        FROM "Arrival"
+                        JOIN public."Detachment" D on "Arrival".id = D."arrivalId"
+                        JOIN public."Client" C on D.id = C."detachmentId"
+                        GROUP BY "Arrival"."beginningDate", "Arrival".price
+                        """)
+    profit = cursor.fetchall()
+    response = []
+    for p in profit:
+        r = {}
+        r["date"] = p[0].strftime("%Y-%m-%d")
+        r["profit"] = p[1]
+        response.append(r)
+    return response
 
 if __name__ == "__main__":
     app.run(debug=True)

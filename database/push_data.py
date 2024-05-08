@@ -6,9 +6,9 @@ from sqlalchemy import create_engine, text
 # Define the database connection parameters
 db_params = {
     'host': 'localhost',
-    'database': 'camp2',
+    'database': 'cursova',
     'user': 'postgres',
-    'password': '1234'
+    'password': 'rootroot'
 }
 
 engine = create_engine(f'postgresql+psycopg2://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}/{db_params["database"]}')

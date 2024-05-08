@@ -6,15 +6,15 @@ from sqlalchemy_utils import database_exists, create_database
 base_db_params = {
     'hostname': 'localhost',
     'username': 'postgres',
-    'password': '1234',
+    'password': 'rootroot',
     'database': 'postgres',
 }
 
 OLTP_params = {
     'host': 'localhost',
     'user': 'postgres',
-    'password': '1234',
-    'database': 'camp2'
+    'password': 'rootroot',
+    'database': 'cursova'
 }
 
 
@@ -59,4 +59,4 @@ def create_db_if_not_exist(params, sql_file):
         print('Db exists')
         
 
-create_db_if_not_exist(OLTP_params, 'C:/Users/Tymof/OneDrive/Desktop/Veronika/database/camp.sql')
+create_db_if_not_exist(OLTP_params, "C:/Users/Veronika/WebstormProjects/CourseFinal/database/camp.sql")
